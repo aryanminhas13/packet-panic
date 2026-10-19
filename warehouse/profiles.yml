@@ -1,0 +1,7 @@
+packet_panic:
+  target: dev
+  outputs:
+    dev:
+      type: duckdb
+      path: "{{ env_var('PACKET_PANIC_DUCKDB_PATH') }}"
+      threads: 4

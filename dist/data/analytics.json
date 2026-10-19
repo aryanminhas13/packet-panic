@@ -1,0 +1,117 @@
+{
+  "generated_at": "2026-10-19T23:48:43.157029Z",
+  "source": "DuckDB warehouse transformed by dbt",
+  "pipeline": {
+    "run_id": "run_d8a5feb4f727",
+    "batch_id": "batch_ae66e2bf0b9c",
+    "status": "passed",
+    "elapsed_ms": 15262,
+    "incremental_rows": 7514,
+    "batch_replay_skipped": false
+  },
+  "metrics": {
+    "sessions": 120,
+    "avg_survival_seconds": 35.7,
+    "intercept_rate_pct": 73.3,
+    "avg_score": 5870,
+    "event_quality_pct": 100.0,
+    "normalized_events": 7514
+  },
+  "funnel": [
+    {
+      "wave": 1,
+      "sessions": 120,
+      "rate": 100.0
+    },
+    {
+      "wave": 2,
+      "sessions": 105,
+      "rate": 87.5
+    },
+    {
+      "wave": 3,
+      "sessions": 75,
+      "rate": 62.5
+    },
+    {
+      "wave": 4,
+      "sessions": 42,
+      "rate": 35.0
+    },
+    {
+      "wave": 5,
+      "sessions": 23,
+      "rate": 19.2
+    },
+    {
+      "wave": 6,
+      "sessions": 11,
+      "rate": 9.2
+    }
+  ],
+  "event_distribution": [
+    {
+      "event_type": "packet_spawned",
+      "count": 3096
+    },
+    {
+      "event_type": "clean_collected",
+      "count": 2000
+    },
+    {
+      "event_type": "corrupt_destroyed",
+      "count": 803
+    },
+    {
+      "event_type": "pulse_fired",
+      "count": 803
+    },
+    {
+      "event_type": "damage_taken",
+      "count": 293
+    },
+    {
+      "event_type": "wave_started",
+      "count": 279
+    },
+    {
+      "event_type": "session_started",
+      "count": 120
+    },
+    {
+      "event_type": "session_ended",
+      "count": 120
+    }
+  ],
+  "insight": {
+    "wave": 3,
+    "next_wave": 4,
+    "drop": 27.5
+  },
+  "quality_checks": [
+    {
+      "name": "Unique event identifiers",
+      "status": "pass",
+      "value": "7,514 unique",
+      "failed_rows": 0
+    },
+    {
+      "name": "Supported schema version",
+      "status": "pass",
+      "value": "0 quarantined",
+      "failed_rows": 0
+    },
+    {
+      "name": "Sessions resolve to a start",
+      "status": "pass",
+      "value": "0 orphan sessions",
+      "failed_rows": 0
+    },
+    {
+      "name": "Accepted event vocabulary",
+      "status": "pass",
+      "value": "9 types",
+      "failed_rows": 0
+    }
+  ]
+}

@@ -1,2 +1,13 @@
 .DS_Store
 *.log
+.venv/
+__pycache__/
+*.pyc
+warehouse/packet_panic.duckdb
+packet_panic.duckdb
+warehouse/target/
+warehouse/logs/
+warehouse/.user.yml
+data/quarantine/*.jsonl
+data/raw/live-events.jsonl
+data/raw/chaos-events.jsonl

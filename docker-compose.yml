@@ -1,0 +1,16 @@
+services:
+  collector:
+    build: .
+    command: uvicorn ingestion.app:app --host 0.0.0.0 --port 8000 --reload
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app
+
+  pipeline:
+    build: .
+    command: sh -c "python generator/generate_events.py && python pipeline/run_pipeline.py --reset"
+    volumes:
+      - .:/app
+    profiles: ["pipeline"]
+

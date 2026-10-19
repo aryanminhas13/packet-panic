@@ -1,0 +1,28 @@
+version: 2
+
+models:
+  - name: stg_game_events
+    description: Valid, normalized and deduplicated gameplay events.
+    columns:
+      - name: event_id
+        tests: [unique, not_null]
+      - name: session_id
+        tests: [not_null]
+      - name: event_type
+        tests:
+          - accepted_values:
+              arguments:
+                values: [session_started, packet_spawned, pulse_fired, clean_collected, corrupt_destroyed, corrupt_leaked, damage_taken, wave_started, session_ended]
+      - name: wave
+        tests: [not_null]
+  - name: fct_sessions
+    description: One row per reconstructed player session.
+    columns:
+      - name: session_id
+        tests: [unique, not_null]
+      - name: duration_seconds
+        tests: [not_null]
+  - name: agg_wave_funnel
+    columns:
+      - name: wave
+        tests: [unique, not_null]

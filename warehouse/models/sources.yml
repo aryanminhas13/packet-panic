@@ -1,0 +1,9 @@
+version: 2
+
+sources:
+  - name: bronze
+    schema: main
+    tables:
+      - name: raw_game_events
+      - name: pipeline_runs
+

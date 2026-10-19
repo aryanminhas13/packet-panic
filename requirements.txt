@@ -1,0 +1,6 @@
+duckdb>=1.4,<2
+dbt-duckdb>=1.9,<2
+fastapi>=0.115,<1
+uvicorn[standard]>=0.34,<1
+dagster>=1.10,<2
+

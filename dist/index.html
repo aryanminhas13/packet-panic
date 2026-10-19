@@ -105,7 +105,13 @@
     .pipe-step code{display:block;margin-top:10px;color:var(--yellow);font-size:.61rem;word-break:break-word}
     .quality-list{display:grid;gap:10px;margin-top:18px}
     .quality-row{display:grid;grid-template-columns:18px 1fr auto;gap:9px;align-items:center;font-size:.7rem;padding-bottom:10px;border-bottom:1px solid #24273a}
-    .quality-row:last-child{border:0;padding-bottom:0}.check{color:var(--cyan);font-weight:900}.quality-row em{font-style:normal;color:#777b91;font-size:.63rem}
+    .quality-row:last-child{border:0;padding-bottom:0}.check{color:var(--cyan);font-weight:900}.check.warn{color:var(--yellow)}.check.fail{color:var(--danger)}.quality-row em{font-style:normal;color:#777b91;font-size:.63rem}
+    .lab-copy{color:#aeb1c5;font:400 .74rem/1.55 ui-monospace,SFMono-Regular,Menlo,monospace;max-width:80ch;margin:0 0 15px}
+    .lab-actions{display:flex;gap:8px;flex-wrap:wrap}
+    .lab-button{border:1px solid #3b3f59;background:#0a0b12;color:#c6c9dd;padding:9px 11px;cursor:pointer;font-size:.67rem;text-transform:uppercase;letter-spacing:.06em}
+    .lab-button:hover,.lab-button:focus-visible{border-color:var(--pink);color:var(--ink)}
+    .lab-result{margin-top:14px;background:#090a11;border-left:3px solid var(--cyan);padding:12px 14px;color:#9da1b8;font:400 .7rem/1.55 ui-monospace,SFMono-Regular,Menlo,monospace}
+    .lab-result.fail{border-color:var(--danger);color:#e9b4bd}
     .schema{margin:0;background:#08090e;border:1px solid #24273a;padding:14px;overflow:auto;color:#bfc2d7;font:400 .67rem/1.65 ui-monospace,SFMono-Regular,Menlo,monospace}
     .schema .key{color:var(--cyan)}.schema .value{color:var(--yellow)}
     .analytics-foot{display:flex;justify-content:space-between;gap:18px;color:#71758b;font:400 .66rem/1.6 ui-monospace,SFMono-Regular,Menlo,monospace;padding-top:2px}
@@ -181,23 +187,23 @@
     <section class="analytics view hidden" id="analytics-view" aria-label="Telemetry analytics">
       <div class="analytics-head">
         <div><p class="kicker">Telemetry console / processed layer</p><h1>RUN ANALYTICS</h1></div>
-        <p>Gameplay events are transformed into session-level metrics. The baseline cohort is deterministic demo data; your runs are appended locally.</p>
-        <span class="cohort-tag" id="cohort-tag">64 DEMO SESSIONS</span>
+        <p>Every baseline metric was generated from a reproducible event batch, loaded into DuckDB, transformed with dbt and checked before publication. Your runs are appended locally.</p>
+        <span class="cohort-tag" id="cohort-tag">LOADING WAREHOUSE</span>
       </div>
       <div class="kpis">
-        <div class="kpi"><span>Total sessions</span><b id="kpi-sessions">64</b><small id="kpi-local">+0 local runs</small></div>
-        <div class="kpi"><span>Avg. survival</span><b id="kpi-survival">72s</b><small>sessionized duration</small></div>
-        <div class="kpi"><span>Intercept rate</span><b id="kpi-intercept">68%</b><small>corrupt packets destroyed</small></div>
-        <div class="kpi"><span>Event quality</span><b id="kpi-quality">99.2%</b><small>valid schema records</small></div>
+        <div class="kpi"><span>Total sessions</span><b id="kpi-sessions">—</b><small id="kpi-local">loading snapshot</small></div>
+        <div class="kpi"><span>Avg. survival</span><b id="kpi-survival">—</b><small>sessionized duration</small></div>
+        <div class="kpi"><span>Intercept rate</span><b id="kpi-intercept">—</b><small>corrupt packets destroyed</small></div>
+        <div class="kpi"><span>Event quality</span><b id="kpi-quality">—</b><small>validated warehouse rows</small></div>
       </div>
       <div class="analytics-grid">
         <section class="data-panel">
           <div class="panel-top"><h2>Wave progression funnel</h2><small>distinct sessions reaching each wave</small></div>
           <div class="funnel" id="funnel"></div>
-          <div class="insight"><strong>Friction detected at Wave 3.</strong> Difficulty increases faster than player mastery; 29% of remaining sessions exit before Wave 4.</div>
+          <div class="insight" id="funnel-insight"><strong>Computing cohort insight…</strong></div>
         </section>
         <section class="data-panel">
-          <div class="panel-top"><h2>Event distribution</h2><small id="event-total">1,842 normalized events</small></div>
+          <div class="panel-top"><h2>Event distribution</h2><small id="event-total">loading normalized events</small></div>
           <div class="event-bars" id="event-bars"></div>
         </section>
       </div>
@@ -210,22 +216,28 @@
           <div class="pipe-step"><strong>04 · Gold</strong><p>Aggregate funnels, difficulty curves and engagement KPIs.</p><code>fct_sessions<br>agg_wave_funnel</code></div>
         </div>
       </section>
+      <section class="data-panel">
+        <div class="panel-top"><h2>Failure injection lab</h2><small>same cases available in the pipeline CLI</small></div>
+        <p class="lab-copy">Inject a bad batch to see which quality gate catches it. The repository reproduces each case with <code>--failure</code> and writes invalid records to quarantine.</p>
+        <div class="lab-actions" aria-label="Failure scenarios">
+          <button class="lab-button" type="button" data-failure="duplicates">Duplicate events</button>
+          <button class="lab-button" type="button" data-failure="late-events">Late events</button>
+          <button class="lab-button" type="button" data-failure="schema-drift">Schema drift</button>
+          <button class="lab-button" type="button" data-failure="orphan-events">Orphan sessions</button>
+        </div>
+        <div class="lab-result" id="lab-result" aria-live="polite">Pipeline healthy. Select a failure scenario to run a controlled incident.</div>
+      </section>
       <div class="analytics-grid">
         <section class="data-panel">
-          <div class="panel-top"><h2>Pipeline quality gates</h2><small>last transformation run</small></div>
-          <div class="quality-list">
-            <div class="quality-row"><span class="check">✓</span><span>event_id is unique and non-null</span><em>1,842 / 1,842</em></div>
-            <div class="quality-row"><span class="check">✓</span><span>session_id resolves to a session start</span><em>99.7%</em></div>
-            <div class="quality-row"><span class="check">✓</span><span>event_time falls inside session window</span><em>100%</em></div>
-            <div class="quality-row"><span class="check">✓</span><span>accepted event_type vocabulary</span><em>10 types</em></div>
-          </div>
+          <div class="panel-top"><h2>Pipeline quality gates</h2><small id="run-status">loading last run</small></div>
+          <div class="quality-list" id="quality-list"></div>
         </section>
         <section class="data-panel">
           <div class="panel-top"><h2>Raw event contract</h2><small>JSON · schema v1</small></div>
-          <pre class="schema" id="schema-sample">{<br>  <span class="key">"event_id"</span>: <span class="value">"evt_8f31..."</span>,<br>  <span class="key">"session_id"</span>: <span class="value">"ses_mg..."</span>,<br>  <span class="key">"event_type"</span>: <span class="value">"corrupt_destroyed"</span>,<br>  <span class="key">"event_time"</span>: <span class="value">"2026-10-04T...Z"</span>,<br>  <span class="key">"wave"</span>: <span class="value">3</span>,<br>  <span class="key">"properties"</span>: { <span class="key">"combo"</span>: <span class="value">4</span> }<br>}</pre>
+          <pre class="schema" id="schema-sample">{<br>  <span class="key">"event_id"</span>: <span class="value">"019..."</span>,<br>  <span class="key">"schema_version"</span>: <span class="value">1</span>,<br>  <span class="key">"event_type"</span>: <span class="value">"corrupt_destroyed"</span>,<br>  <span class="key">"client_time"</span>: <span class="value">"2026-10-19T...Z"</span>,<br>  <span class="key">"session_id"</span>: <span class="value">"ses_mg..."</span>,<br>  <span class="key">"sequence_number"</span>: <span class="value">83</span>,<br>  <span class="key">"game_version"</span>: <span class="value">"2.0.0"</span>,<br>  <span class="key">"wave"</span>: <span class="value">3</span>,<br>  <span class="key">"properties"</span>: { <span class="key">"combo"</span>: <span class="value">4</span> }<br>}</pre>
         </section>
       </div>
-      <footer class="analytics-foot"><span>Storage: local event buffer · Transformation: deterministic client pipeline</span><span>Production evolution: Kafka → object storage → dbt/Spark → warehouse</span></footer>
+      <footer class="analytics-foot"><span id="pipeline-source">Source: loading warehouse snapshot</span><span>Implemented: FastAPI → JSONL → DuckDB → dbt → dashboard artifact</span></footer>
     </section>
   </main>
 
@@ -243,13 +255,17 @@
       const streamStatus = document.getElementById('stream-status');
       const keys = new Set();
       const tabs=[...document.querySelectorAll('.tab[data-view]')];
+      const playerId=localStorage.getItem('packet_panic_player_id')||('player_'+Math.random().toString(36).slice(2,10));
+      localStorage.setItem('packet_panic_player_id',playerId);
+      let warehouseData=null, sequenceNumber=0;
       let state = 'idle', score = 0, integrity = 3, wave = 1, combo = 1, frame = 0, last = 0, spawnClock = 0, sessionId = '';
       let player = {x:455,y:526,w:50,h:30,speed:390,cooldown:0};
       let packets = [], shots = [], stars = [];
       for(let i=0;i<90;i++) stars.push({x:Math.random()*960,y:Math.random()*600,s:Math.random()<.85?1:2,a:.2+Math.random()*.7});
 
       function event(type, props={}){
-        const item={event_id:crypto.randomUUID?.()||Math.random().toString(16).slice(2),session_id:sessionId,event_type:type,event_time:new Date().toISOString(),wave,...props};
+        sequenceNumber+=1;
+        const item={event_id:crypto.randomUUID?.()||Math.random().toString(16).slice(2),schema_version:1,event_type:type,client_time:new Date().toISOString(),session_id:sessionId,anonymous_player_id:playerId,sequence_number:sequenceNumber,game_version:'2.0.0',wave,properties:props};
         const history=JSON.parse(localStorage.getItem('packet_panic_events')||'[]');
         history.push(item); localStorage.setItem('packet_panic_events',JSON.stringify(history.slice(-4000)));
         const line=document.createElement('div'); line.className='event';
@@ -259,7 +275,7 @@
       }
       function updateHud(){scoreEl.textContent=String(score).padStart(6,'0');integrityEl.textContent=Array(3).fill(0).map((_,i)=>i<integrity?'●':'○').join(' ');waveEl.textContent=String(wave).padStart(2,'0');comboEl.textContent='x'+combo;}
       function start(){
-        sessionId='ses_'+Date.now().toString(36);state='playing';score=0;integrity=3;wave=1;combo=1;frame=0;packets=[];shots=[];player.x=455;overlay.classList.add('hidden');streamStatus.textContent='Session '+sessionId.slice(-6)+' streaming';event('session_started',{device:innerWidth<700?'touch':'desktop'});updateHud();last=performance.now();requestAnimationFrame(loop);
+        sessionId='ses_'+Date.now().toString(36);sequenceNumber=0;state='playing';score=0;integrity=3;wave=1;combo=1;frame=0;packets=[];shots=[];player.x=455;overlay.classList.add('hidden');streamStatus.textContent='Session '+sessionId.slice(-6)+' streaming';event('session_started',{device:innerWidth<700?'touch':'desktop'});updateHud();last=performance.now();requestAnimationFrame(loop);
       }
       function fire(){if(state!=='playing'||player.cooldown>0)return;shots.push({x:player.x+22,y:player.y-10,w:6,h:18});player.cooldown=.24;event('pulse_fired',{player_x:Math.round(player.x)});}
       function spawn(){
@@ -297,31 +313,77 @@
       function loop(now){if(state!=='playing')return;const dt=Math.min(.032,(now-last)/1000);last=now;update(dt);draw();if(state==='playing')requestAnimationFrame(loop)}
       function idle(){draw();requestAnimationFrame(idle)}
       function getEvents(){try{return JSON.parse(localStorage.getItem('packet_panic_events')||'[]')}catch{return []}}
-      function renderAnalytics(){
+      async function loadWarehouse(){
+        if(warehouseData)return warehouseData;
+        const response=await fetch('data/analytics.json',{cache:'no-store'});
+        if(!response.ok)throw new Error('Warehouse snapshot unavailable');
+        warehouseData=await response.json();
+        return warehouseData;
+      }
+      function eventProps(item){return item.properties||item}
+      function renderQuality(checks){
+        document.getElementById('quality-list').innerHTML=checks.map(check=>{
+          const cls=check.status==='pass'?'':check.status;
+          const symbol=check.status==='pass'?'✓':check.status==='warn'?'!':'×';
+          return `<div class="quality-row"><span class="check ${cls}">${symbol}</span><span>${check.name}</span><em>${check.value}</em></div>`;
+        }).join('');
+      }
+      async function renderAnalytics(){
+        let data;
+        try{data=await loadWarehouse()}catch(error){
+          document.getElementById('cohort-tag').textContent='SNAPSHOT ERROR';
+          document.getElementById('funnel-insight').innerHTML='<strong>Pipeline artifact unavailable.</strong> Run the local pipeline to regenerate analytics.json.';
+          return;
+        }
         const events=getEvents();
         const starts=events.filter(e=>e.event_type==='session_started');
         const ends=events.filter(e=>e.event_type==='session_ended');
-        const sessions=64+starts.length;
-        const completedDurations=ends.map(e=>Number(e.duration_seconds)||0).filter(Boolean);
-        const avg=completedDurations.length?Math.round((72*64+completedDurations.reduce((a,b)=>a+b,0))/(64+completedDurations.length)):72;
+        const baseSessions=data.metrics.sessions;
+        const sessions=baseSessions+starts.length;
+        const completedDurations=ends.map(e=>Number(eventProps(e).duration_seconds)||0).filter(Boolean);
+        const avg=completedDurations.length?Math.round((data.metrics.avg_survival_seconds*baseSessions+completedDurations.reduce((a,b)=>a+b,0))/(baseSessions+completedDurations.length)):Math.round(data.metrics.avg_survival_seconds);
         const destroyed=events.filter(e=>e.event_type==='corrupt_destroyed').length;
         const leaked=events.filter(e=>e.event_type==='corrupt_leaked'||e.event_type==='damage_taken').length;
-        const intercept=destroyed+leaked?Math.round((.68*182+destroyed)/(182+destroyed+leaked)*100):68;
+        const baseDestroyed=data.event_distribution.find(e=>e.event_type==='corrupt_destroyed')?.count||0;
+        const baseDamage=(data.event_distribution.find(e=>e.event_type==='damage_taken')?.count||0)+(data.event_distribution.find(e=>e.event_type==='corrupt_leaked')?.count||0);
+        const intercept=destroyed+leaked?Math.round(100*(baseDestroyed+destroyed)/(baseDestroyed+baseDamage+destroyed+leaked)):Math.round(data.metrics.intercept_rate_pct);
         document.getElementById('kpi-sessions').textContent=sessions;
         document.getElementById('kpi-local').textContent=`+${starts.length} local run${starts.length===1?'':'s'}`;
         document.getElementById('kpi-survival').textContent=avg+'s';
         document.getElementById('kpi-intercept').textContent=intercept+'%';
-        document.getElementById('cohort-tag').textContent=`64 DEMO + ${starts.length} LOCAL`;
-        const reached=[64,50,35,25,15,8];
-        starts.forEach(start=>{const max=Math.max(1,...events.filter(e=>e.session_id===start.session_id).map(e=>e.wave||1));for(let i=0;i<Math.min(max,6);i++)reached[i]+=1});
+        document.getElementById('kpi-quality').textContent=data.metrics.event_quality_pct+'%';
+        document.getElementById('cohort-tag').textContent=`${baseSessions} WAREHOUSE + ${starts.length} LOCAL`;
+        const reached=data.funnel.map(row=>row.sessions);
+        starts.forEach(start=>{const max=Math.max(1,...events.filter(e=>e.session_id===start.session_id).map(e=>e.wave||1));for(let i=0;i<Math.min(max,reached.length);i++)reached[i]+=1});
         const denom=sessions;
         document.getElementById('funnel').innerHTML=reached.map((n,i)=>{const pct=Math.round(n/denom*100);return `<div class="funnel-row"><span>Wave ${i+1}</span><div class="funnel-track"><div class="funnel-fill" style="width:${pct}%"></div></div><span class="funnel-value">${pct}%</span></div>`}).join('');
-        const base={packet_spawned:692,pulse_fired:501,clean_collected:286,corrupt_destroyed:182,damage_taken:96,session_ended:64};
+        const base=Object.fromEntries(data.event_distribution.slice(0,7).map(row=>[row.event_type,row.count]));
         events.forEach(e=>{if(e.event_type in base)base[e.event_type]++});
         const max=Math.max(...Object.values(base));
         document.getElementById('event-bars').innerHTML=Object.entries(base).map(([name,count])=>`<div class="event-row"><code>${name}</code><div class="event-track"><div class="event-fill" style="width:${Math.round(count/max*100)}%"></div></div><span>${count}</span></div>`).join('');
-        document.getElementById('event-total').textContent=(1821+events.length).toLocaleString()+' normalized events';
+        document.getElementById('event-total').textContent=(data.metrics.normalized_events+events.length).toLocaleString()+' normalized events';
+        const insight=data.insight;
+        document.getElementById('funnel-insight').innerHTML=`<strong>Largest friction point: Wave ${insight.wave}.</strong> ${insight.drop}% of the cohort drops before Wave ${insight.next_wave}; this is the clearest difficulty-tuning opportunity.`;
+        document.getElementById('run-status').textContent=`${data.pipeline.status} · ${data.pipeline.elapsed_ms} ms`;
+        document.getElementById('pipeline-source').textContent=`Source: ${data.source} · ${new Date(data.generated_at).toLocaleDateString()}`;
+        renderQuality(data.quality_checks);
       }
+      const failureScenarios={
+        'duplicates':{message:'25 duplicate event IDs detected. Bronze preserves them; the Silver model keeps the earliest record, making the replay idempotent.',quality:'Unique event identifiers',value:'25 deduplicated',status:'warn'},
+        'late-events':{message:'40 events arrived more than one hour late. They remain valid and are processed by event time while ingestion lag is recorded.',quality:'Event-time freshness',value:'40 late rows',status:'warn'},
+        'schema-drift':{message:'30 schema-v2 records replaced wave with level. The contract rejected them and wrote the raw payloads to quarantine before dbt ran.',quality:'Supported schema version',value:'30 quarantined',status:'fail'},
+        'orphan-events':{message:'25 events referenced sessions without a session_started event. The relationship test failed and blocked Gold publication.',quality:'Sessions resolve to a start',value:'25 orphan sessions',status:'fail'}
+      };
+      document.querySelectorAll('[data-failure]').forEach(button=>button.addEventListener('click',async()=>{
+        const scenario=failureScenarios[button.dataset.failure];
+        const result=document.getElementById('lab-result');
+        result.classList.add('fail');result.textContent=scenario.message;
+        const data=await loadWarehouse();
+        const checks=data.quality_checks.map(check=>check.name===scenario.quality?{...check,status:scenario.status,value:scenario.value}:check);
+        if(!checks.some(check=>check.name===scenario.quality))checks.unshift({name:scenario.quality,status:scenario.status,value:scenario.value});
+        renderQuality(checks);
+        document.getElementById('kpi-quality').textContent=scenario.status==='fail'?'FAILED':'WARN';
+      }));
       tabs.forEach(tab=>tab.addEventListener('click',()=>{
         const view=tab.dataset.view;
         tabs.forEach(t=>{const active=t===tab;t.classList.toggle('active',active);t.setAttribute('aria-pressed',String(active))});
