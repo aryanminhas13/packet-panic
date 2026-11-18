@@ -1,11 +1,11 @@
 {
-  "generated_at": "2026-10-19T23:48:43.157029Z",
+  "generated_at": "2026-11-18T10:49:00.694864Z",
   "source": "DuckDB warehouse transformed by dbt",
   "pipeline": {
-    "run_id": "run_d8a5feb4f727",
-    "batch_id": "batch_ae66e2bf0b9c",
+    "run_id": "run_0a7fe858d437",
+    "batch_id": "rebuild_1_batches",
     "status": "passed",
-    "elapsed_ms": 15262,
+    "elapsed_ms": 6858,
     "incremental_rows": 7514,
     "batch_replay_skipped": false
   },
@@ -59,11 +59,11 @@
       "count": 2000
     },
     {
-      "event_type": "corrupt_destroyed",
+      "event_type": "pulse_fired",
       "count": 803
     },
     {
-      "event_type": "pulse_fired",
+      "event_type": "corrupt_destroyed",
       "count": 803
     },
     {

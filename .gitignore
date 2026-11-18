@@ -11,3 +11,4 @@ warehouse/.user.yml
 data/quarantine/*.jsonl
 data/raw/live-events.jsonl
 data/raw/chaos-events.jsonl
+data/lake/

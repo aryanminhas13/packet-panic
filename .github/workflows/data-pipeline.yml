@@ -32,3 +32,24 @@ jobs:
           assert data['metrics']['normalized_events'] == 7514
           assert data['insight']['wave'] == 3
           PY
+      - name: Land batches in S3 and rebuild warehouse from the lake
+        env:
+          LAKE_URI: s3://packet-panic-lake
+          AWS_ENDPOINT_URL: http://127.0.0.1:5000
+          AWS_ACCESS_KEY_ID: test
+          AWS_SECRET_ACCESS_KEY: test
+          AWS_REGION: us-east-1
+        run: |
+          pip install "moto[server]"
+          moto_server -p 5000 &
+          sleep 3
+          python -c "import os, s3fs; s3fs.S3FileSystem(client_kwargs={'endpoint_url': os.environ['AWS_ENDPOINT_URL']}).mkdir('packet-panic-lake')"
+          python pipeline/run_pipeline.py --reset
+          python pipeline/run_pipeline.py --rebuild-from-lake
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          data = json.loads(Path('dist/data/analytics.json').read_text())
+          assert data['metrics']['sessions'] == 120
+          assert data['metrics']['normalized_events'] == 7514
+          PY

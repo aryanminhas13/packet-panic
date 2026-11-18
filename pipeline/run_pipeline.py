@@ -18,11 +18,15 @@ from pathlib import Path
 import duckdb
 
 ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from pipeline.lake import Lake  # noqa: E402
+
 WAREHOUSE = ROOT / "warehouse"
 DB_PATH = WAREHOUSE / "packet_panic.duckdb"
 DEFAULT_INPUT = ROOT / "data" / "raw" / "demo-events.jsonl"
 OUTPUT = ROOT / "dist" / "data" / "analytics.json"
-QUARANTINE_DIR = ROOT / "data" / "quarantine"
 
 VALID_EVENT_TYPES = {
     "session_started", "packet_spawned", "pulse_fired", "clean_collected",
@@ -108,7 +112,7 @@ def validate_event(event: dict) -> str | None:
     return None
 
 
-def load_batch(connection: duckdb.DuckDBPyConnection, input_path: Path) -> dict:
+def load_batch(connection: duckdb.DuckDBPyConnection, input_path: Path, lake: Lake) -> dict:
     payload = input_path.read_bytes()
     batch_hash = hashlib.sha256(payload).hexdigest()
     previous = connection.execute("select batch_id from ingested_batches where batch_hash = ?", [batch_hash]).fetchone()
@@ -151,15 +155,16 @@ def load_batch(connection: duckdb.DuckDBPyConnection, input_path: Path) -> dict:
             json.dumps(event["properties"], separators=(",", ":")), batch_id, loaded_at,
         ))
 
+    # Land in the lake first: object storage is the source of truth, the warehouse is derived.
+    lake.write_batch(
+        batch_hash=batch_hash, batch_id=batch_id, source_file=str(input_path), payload=payload,
+        loaded_at=loaded_at, valid_rows=valid, quarantined_rows=quarantined,
+    )
+
     if valid:
         connection.executemany("insert into raw_game_events values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", valid)
     if quarantined:
         connection.executemany("insert into quarantined_events values (?, ?, ?, ?, ?)", quarantined)
-        QUARANTINE_DIR.mkdir(parents=True, exist_ok=True)
-        quarantine_path = QUARANTINE_DIR / f"{batch_id}.jsonl"
-        with quarantine_path.open("w", encoding="utf-8") as handle:
-            for row in quarantined:
-                handle.write(json.dumps({"batch_id": row[0], "line_number": row[1], "reason": row[2], "raw_payload": row[3]}) + "\n")
 
     connection.execute("insert into ingested_batches values (?, ?, ?, ?, ?, ?)", [batch_hash, batch_id, str(input_path), loaded_at, len(valid), len(quarantined)])
     return {
@@ -170,6 +175,38 @@ def load_batch(connection: duckdb.DuckDBPyConnection, input_path: Path) -> dict:
         "quarantined": len(quarantined),
         "duplicates": duplicate_count,
         "late": late_count,
+    }
+
+
+def rebuild_from_lake(connection: duckdb.DuckDBPyConnection, lake: Lake) -> dict:
+    """Replay every committed lake batch into an empty warehouse (backfill / disaster recovery)."""
+    manifests = lake.manifests()
+    if not manifests:
+        raise RuntimeError(f"No committed batches found in lake at {lake.uri}")
+    valid_total = quarantined_total = 0
+    for manifest in manifests:
+        bronze = lake.read_bronze(manifest)  # noqa: F841 - referenced by DuckDB replacement scan
+        connection.execute("insert into raw_game_events select * from bronze")
+        rows = [
+            (q["batch_id"], q["line_number"], q["reason"], q["raw_payload"], manifest["ingested_at"])
+            for q in lake.read_quarantine(manifest)
+        ]
+        if rows:
+            connection.executemany("insert into quarantined_events values (?, ?, ?, ?, ?)", rows)
+        connection.execute("insert into ingested_batches values (?, ?, ?, ?, ?, ?)", [
+            manifest["batch_hash"], manifest["batch_id"], manifest["source_file"], manifest["ingested_at"],
+            manifest["valid_rows"], manifest["quarantined_rows"],
+        ])
+        valid_total += bronze.num_rows
+        quarantined_total += len(rows)
+    return {
+        "batch_id": f"rebuild_{len(manifests)}_batches",
+        "skipped": False,
+        "raw": valid_total + quarantined_total,
+        "valid": valid_total,
+        "quarantined": quarantined_total,
+        "duplicates": 0,
+        "late": 0,
     }
 
 
@@ -255,12 +292,13 @@ def export_dashboard(connection: duckdb.DuckDBPyConnection, run: dict, elapsed_m
     return output
 
 
-def execute(input_path: Path) -> dict:
+def execute(input_path: Path | None, rebuild: bool = False) -> dict:
     started = time.perf_counter()
     run_id = "run_" + uuid.uuid4().hex[:12]
+    lake = Lake()
     connection = duckdb.connect(str(DB_PATH))
     initialize(connection)
-    batch = load_batch(connection, input_path)
+    batch = rebuild_from_lake(connection, lake) if rebuild else load_batch(connection, input_path, lake)
     connection.close()
     run_dbt()
     elapsed_ms = int((time.perf_counter() - started) * 1000)
@@ -279,10 +317,14 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--input", type=Path, default=DEFAULT_INPUT)
     parser.add_argument("--reset", action="store_true", help="Delete the local warehouse before loading.")
+    parser.add_argument(
+        "--rebuild-from-lake", action="store_true",
+        help="Drop the warehouse and rebuild it entirely from batches committed to the lake.",
+    )
     args = parser.parse_args()
-    if args.reset and DB_PATH.exists():
+    if (args.reset or args.rebuild_from_lake) and DB_PATH.exists():
         DB_PATH.unlink()
-    output = execute(args.input)
+    output = execute(args.input, rebuild=args.rebuild_from_lake)
     print(json.dumps({"status": "passed", "sessions": output["metrics"]["sessions"], "events": output["metrics"]["normalized_events"], "output": str(OUTPUT)}))
 
 

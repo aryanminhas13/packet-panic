@@ -7,10 +7,41 @@ services:
     volumes:
       - .:/app
 
+  minio:
+    image: minio/minio:latest
+    command: server /data --console-address ":9001"
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: packetpanic
+      MINIO_ROOT_PASSWORD: packetpanic123
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      retries: 10
+
+  create-bucket:
+    image: minio/mc:latest
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      sh -c "mc alias set lake http://minio:9000 packetpanic packetpanic123 &&
+             mc mb --ignore-existing lake/packet-panic-lake"
+
   pipeline:
     build: .
     command: sh -c "python generator/generate_events.py && python pipeline/run_pipeline.py --reset"
+    depends_on:
+      create-bucket:
+        condition: service_completed_successfully
+    environment:
+      LAKE_URI: s3://packet-panic-lake
+      AWS_ENDPOINT_URL: http://minio:9000
+      AWS_ACCESS_KEY_ID: packetpanic
+      AWS_SECRET_ACCESS_KEY: packetpanic123
+      AWS_REGION: us-east-1
     volumes:
       - .:/app
     profiles: ["pipeline"]
-
