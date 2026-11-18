@@ -1,11 +1,11 @@
 {
-  "generated_at": "2026-11-18T10:49:00.694864Z",
+  "generated_at": "2026-11-18T22:03:51.229167Z",
   "source": "DuckDB warehouse transformed by dbt",
   "pipeline": {
-    "run_id": "run_0a7fe858d437",
+    "run_id": "run_73c7e812df11",
     "batch_id": "rebuild_1_batches",
     "status": "passed",
-    "elapsed_ms": 6858,
+    "elapsed_ms": 4121,
     "incremental_rows": 7514,
     "batch_replay_skipped": false
   },
